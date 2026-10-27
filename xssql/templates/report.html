@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xssql scan report #{{ scan.id }}</title>
+<style>
+  :root{--bg:#0f172a;--surface:#1e293b;--border:#334155;--text:#e2e8f0;
+        --muted:#94a3b8;--accent:#38bdf8;--red:#f87171;--yellow:#fbbf24;
+        --green:#4ade80;--orange:#fb923c;--font:'Segoe UI',system-ui,sans-serif;
+        --mono:'Cascadia Code','Fira Code',monospace}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+        padding:12px 18px;min-width:110px}
+  .stat-value{font-size:20px;font-weight:700}
+  .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase}
+  table{width:100%;border-collapse:collapse;margin-bottom:28px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;
+        vertical-align:top}
+  th{color:var(--muted);text-transform:uppercase;font-size:11px}
+  .mono{font-family:var(--mono);word-break:break-all}
+  .pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase}
+  .pill-high{background:#450a0a;color:var(--red)}
+  .pill-medium{background:#422006;color:var(--orange)}
+  .pill-low{background:#422006;color:var(--yellow)}
+  .pill-info{background:#1e293b;color:var(--muted)}
+  .band-confirmed{color:var(--red);font-weight:700}
+  .band-probable{color:var(--orange);font-weight:700}
+  .band-weak{color:var(--muted)}
+  .sh{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+      font-weight:700;margin:26px 0 10px}
+  .empty{color:var(--muted);font-style:italic}
+  .banner{background:#431407;border:1px solid var(--orange);border-radius:10px;padding:12px 16px;
+          margin-bottom:22px;font-size:12px;color:#fed7aa}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>xssql scan report — #{{ scan.id }}</h1>
+  <div class="sub">
+    target: <span class="mono">{{ scan.target }}</span> &middot;
+    status: {{ scan.status }} &middot;
+    generated {{ generated_at }}
+    {% if scan.partial_reason %}&middot; partial: {{ scan.partial_reason }}{% endif %}
+  </div>
+
+  <div class="banner">For authorized/lab targets only. See README for the
+    ethics-by-construction consent + scope gate this scan was run under.</div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-value">{{ findings|length }}</div><div class="stat-label">Findings</div></div>
+    <div class="stat"><div class="stat-value">{{ endpoints|length }}</div><div class="stat-label">Endpoints</div></div>
+    <div class="stat"><div class="stat-value">{{ scan.requests_sent }}</div><div class="stat-label">Requests</div></div>
+    {% for sev, count in by_severity.items() %}
+    <div class="stat"><div class="stat-value">{{ count }}</div><div class="stat-label">{{ sev }}</div></div>
+    {% endfor %}
+  </div>
+
+  <div class="sh">Findings</div>
+  {% if findings %}
+  <table>
+    <thead><tr>
+      <th>Type</th><th>Severity</th><th>Confidence</th><th>URL</th><th>Param</th>
+      <th>Payload</th><th>Evidence</th><th>CWE</th><th>Remediation</th>
+    </tr></thead>
+    <tbody>
+    {% for f in findings %}
+      <tr>
+        <td>{{ f.vuln_type }}</td>
+        <td><span class="pill pill-{{ f.severity }}">{{ f.severity }}</span></td>
+        <td><span class="band-{{ f.confidence_band }}">{{ "%.0f"|format(f.confidence*100) }}%</span></td>
+        <td class="mono">{{ f.url }}</td>
+        <td>{{ f.parameter }} <span style="color:var(--muted)">({{ f.param_location }})</span></td>
+        <td class="mono">{{ f.payload }}</td>
+        <td class="mono">{{ f.evidence }}</td>
+        <td>{{ f.cwe }}</td>
+        <td>{{ f.remediation }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No findings.</p>
+  {% endif %}
+
+  <div class="sh">Attack surface discovered</div>
+  {% if endpoints %}
+  <table>
+    <thead><tr><th>Method</th><th>URL</th><th>Parameters</th></tr></thead>
+    <tbody>
+    {% for ep in endpoints %}
+      <tr>
+        <td>{{ ep.method }}</td>
+        <td class="mono">{{ ep.url }}</td>
+        <td>{{ ep.params|map(attribute="name")|join(", ") }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No endpoints recorded.</p>
+  {% endif %}
+</div>
+</body>
+</html>
